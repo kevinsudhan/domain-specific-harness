@@ -1,0 +1,9 @@
+.env
+node_modules/
+dist/
+scratch/
+
+# tsc --noEmit is the only compile we do; stray .js next to .ts is an accident
+src/**/*.js
+scripts/**/*.js
+builds/
