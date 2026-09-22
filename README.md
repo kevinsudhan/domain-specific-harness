@@ -4,10 +4,10 @@
 
 **Describe a business. Get a working operations system.**
 
-A domain-agnostic kernel — a state machine, a policy gate and an audit ledger — that runs
-any service business from a config file. Eleven lifecycle templates ship with it, and a
-builder turns one line of English into a deployed app with its own database, voice agents
-and workflows.
+A library of operations modules — billing, pipeline, mail, scheduling, procurement,
+approvals, audit — that compose into complete business software. Describe what you do in
+one line and the harness assembles the modules you need, provisions the workflows, the
+voice agents and the memory, and hands you a running application.
 
 </div>
 
@@ -17,149 +17,156 @@ and workflows.
 
 ## The idea
 
-Most operations software is the same three questions asked in different vocabularies:
+Business software is not a hundred different products. It is the same dozen modules
+rearranged: something that holds a record and moves it through stages, something that bills
+for it, something that reads the mail, something that books time or space, something that
+decides what a human has to approve, and something that remembers what happened.
 
-1. **What state is this thing in, and what may happen to it next?**
-2. **May the system do this alone, or does a human have to approve it?**
-3. **What happened, who did it, and can we prove it?**
+A freight desk, a dental clinic and a law firm each use a different subset in a different
+vocabulary. They are not different systems. They are different **compositions**.
 
-A shipment, a dental appointment, a court matter and a gym membership differ in their
-nouns, their stages and where their brakes sit — not in the shape of those questions. So
-the kernel that answers them is fixed code, and everything business-specific is data.
-
-That is the whole design. A vertical is a config file. Adding an industry is writing one,
-not forking the system.
-
-```ts
-export const dental = defineVertical({
-  id: "dental",
-  lifecycle: {
-    order: ["enquiry", "scheduled", "consultation", "treatment_plan",
-            "in_treatment", "billing", "recall", "closed"],
-    initial: "enquiry",
-    states: { /* what may happen in each, and where it can go next */ },
-  },
-  policy: {
-    alwaysApprove: {
-      prescribe: { why: "prescribing is a clinical decision", approver: "compliance" },
-    },
-    thresholds: [
-      { actions: ["raise_invoice"], measure: "amount", limit: 25_000,
-        trigger: "atOrAbove", approver: "finance" },
-    ],
-  },
-});
-```
-
-The state machine and the policy gate never learn what business they are serving. They are
-handed a config and they run it.
+So this ships the modules, not the products. Each one is generic, driven by a manifest
+rather than hand-written per industry, and a build is a selection of them wired to a
+lifecycle. That is why one codebase can stand up a hundred different businesses without a
+hundred codebases behind it.
 
 ---
 
-## What a built business looks like
+## The module catalogue
 
-This was generated from a one-line description. Its own name, its own vocabulary
-("leads", "trial bookings", "coaches"), its own lifecycle, its own data.
+Every module below is generic and manifest-driven — it renders and behaves according to the
+build that mounted it, not according to any one industry.
+
+| Module | What it gives a business |
+| --- | --- |
+| **Pipeline board** | The core record moving through its stages, with the legal next actions on each. |
+| **Record desk** | A record's full detail, its timeline, and the actions available right now. |
+| **Registers** | A list view for every entity the business keeps — customers, jobs, assets, anything. |
+| **Billing** | Priced lines, quotes and invoices, with margin computed against what the job cost. |
+| **Money rail** | Payment links and settlement, gated by amount before anything moves. |
+| **Mail desk** | Inbound mail read into structured records, and requests sent out over email. |
+| **Call desk** | Calls transcribed and read into structured records after the conversation ends. |
+| **Scheduling** | Bookable capacity — slots, rooms, chairs, containers — and reservations against it. |
+| **Procurement** | Partners, rate requests and the quotes that come back, compared side by side. |
+| **Approvals** | The policy queue: everything the system declined to do alone, waiting on a human. |
+| **Audit trail** | Append-only record of every action, who took it and when. Reversal appends. |
+| **Deadline sentinel** | Sweeps everything open against the clock and escalates before a date is missed. |
+| **Memory** | A knowledge graph per business, answering questions about its own history. |
+| **Voice agents** | Phone agents that answer as the business, grounded in its own reference data. |
+| **Workflows** | The automation layer connecting all of the above to the outside world. |
+| **Business setup** | The configuration surface: stages, thresholds, reference data. |
+
+Sixteen modules. A gym uses the pipeline, scheduling, billing, approvals and call desk. A
+law firm uses the record desk, billing, mail, approvals and audit. A freight consolidator
+uses nearly all of them. **The combinations are where the hundreds of business softwares
+come from** — and none of them require new code.
+
+---
+
+## What a composition looks like
+
+This is a built business. Its own name, its own vocabulary, its own stages — assembled from
+the modules above, with nothing written by hand.
 
 ![A built business](docs/screenshots/02-built-app-overview.png)
 
-Every screen is driven by the build's manifest, so the navigation, the stage counts and
-the forms are all derived from the vertical rather than hand-written per industry.
+The navigation is not authored. Each entry is a module the build mounted, named in the
+business's own words: "leads" rather than records, "trial bookings" rather than
+reservations, "coaches" rather than partners.
+
+![Pipeline board](docs/screenshots/03-built-app-board.png)
+
+The same pipeline module, showing this business's own stages. A card carries how much of
+its stage's requirements are met, and the amber badge marks a record with an action the
+policy gate held back — nothing above a threshold happens on its own, and whoever requested
+it cannot be the one who approves it.
+
+![Audit trail](docs/screenshots/05-built-app-audit.png)
+
+Every action ever taken, with the person who took it. Reversal appends a new entry rather
+than deleting the old one, so the trail cannot be edited into a different story.
 
 ---
 
-## Templates
+## What sets it apart
 
-Eleven ship today. Each is a *lifecycle shape* rather than a single product — the clinical
-shape fits dentistry, physiotherapy, dermatology and diagnostics; the custody shape fits
-phone repair, appliance service, tailoring and equipment hire. Between them the eleven
-shapes cover well over a hundred recognisable business types.
+### Self-configuring workflows
 
-| Template | Stages | Human-only actions | Shape it covers |
-| --- | --- | --- | --- |
-| **Freight forwarding** | 10 | 5 | Cut-off driven: consolidation, customs brokerage, haulage |
-| **Recruitment desk** | 8 | 4 | Two-sided matching: staffing, executive search, contracting |
-| **Dental practice** | 8 | 5 | Clinical, multi-visit: dentistry, physio, dermatology |
-| **Veterinary practice** | 8 | 5 | Clinical with admission: vets, day clinics, diagnostics |
-| **Law firm** | 8 | 6 | Matter-based: litigation, conveyancing, compliance advisory |
-| **Real estate brokerage** | 8 | 4 | High-value transaction: sales, leasing, land |
-| **Catering & events** | 8 | 4 | Fixed-date delivery: catering, weddings, production |
-| **Repair shop** | 8 | 3 | Custody of goods: devices, appliances, instruments |
-| **Gym & fitness studio** | 7 | 3 | Subscription and retention: gyms, studios, clubs |
-| **Salon & spa** | 7 | 2 | Resource scheduling: salons, spas, grooming |
-| **Tutoring centre** | 8 | 4 | Enrolment and term: coaching, music schools, driving schools |
+Automation is not left as an exercise. A build's workflows are generated, credentialled and
+imported for it.
 
-Every one is validated by the same checks — reachable states, no dangling transitions, no
-undeclared actions, no dead policy config — so a template nobody is running today is still
-held to the standard of the one in production.
+The harness creates the API credential, clones the workflow graph for that business, and
+**bakes the build's own URLs into the node definitions at import time** rather than relying
+on environment variables — hosted n8n restricts `$env` and licence-gates the alternative,
+which is the failure mode where every call quietly posts to `undefined/...` and nothing
+errors anywhere. Re-running updates in place instead of duplicating, because five copies of
+one workflow listening on the same path makes which one answers a coin toss.
 
-Adding a twelfth is a config file and a line in the registry. `ready: false` keeps it out
-of routing until it is finished, so a half-written lifecycle can never take a real request.
+Workflows arrive **switched off**. Going live is a deliberate act rather than a side effect
+of deploying — and the deploy says so when it could not activate, instead of leaving you to
+find the silent 404s later.
+
+### Voice agents that answer as the business
+
+Each build gets its own phone agents, cloned from the voice module and rewritten for that
+business: its greeting, its prompt, its extraction schema, its reference data as knowledge
+sources.
+
+Names are checked against the live account before creation, so two builds can never collide
+on one. Agents are created as drafts with no phone number and no webhook — a generated agent
+cannot answer a real call until someone connects it on purpose.
+
+Extraction happens **after** the call, not during it. A voice model deciding mid-sentence
+whether to file a customs entry is a worse design than a model reading the finished
+transcript with the whole record in front of it, and it is the one the stack actually
+supports.
+
+### Memory that degrades instead of blocking
+
+Every business gets its own knowledge graph, seeded with prose about what it does and then
+built out from its own ledger as it runs. It answers questions about its own history and
+rebuilds its reference data as the underlying records change.
+
+The important property is the failure mode: **memory returns empty and never throws.** An
+outage must not stop someone taking a booking. The record-of-truth adapter does the exact
+opposite and fails loudly, because silently dropping a commitment is worse than an error.
+Those two choices are deliberate, and deliberately opposite.
 
 ---
 
-## The builder
-
-Two modes, one model call each.
-
-**Fork** — a new business from a template. The model receives a compact digest of the
-template and returns only a *delta*: which states change, which columns are renamed or
-dropped, which agents and workflows to keep. Everything after that is deterministic —
-the SQL, the cloned workflow JSON, the agent prompts and the vertical config are generated
-from the delta, not written by the model. Mechanical slips are repaired in code; anything
-else is rejected with one repair attempt.
-
-**Extend** — a change to an existing system, diffed against a live manifest of what is
-actually deployed. It stops at an approval diff and never executes on its own.
+## How a build happens
 
 ```bash
-npm run fork -- "a dental clinic in Chennai that books by phone"
-npm run fork -- --build "a gym that runs trials before membership"
-npm run app -- <build-name>          # run it as its own app on its own port
+npm run fork -- "a dental clinic in Chennai that books appointments by phone"
+npm run app -- <build-name>
 ```
 
-Routing is deterministic rather than a model guess: a request is matched against each
-template's vocabulary, and when nothing scores above the floor it returns **no template**
-rather than a default. A wrong template is worse than none — it hands every downstream
-verdict a lifecycle from the wrong industry while looking perfectly confident.
+One model call produces a *delta* — which stages this business has, what its records are
+called, which modules it needs. Everything after that is deterministic: the schema, the
+workflow graphs, the agent prompts and the configuration are generated from the delta, not
+written by the model. Mechanical slips are repaired in code; anything else is rejected.
 
----
-
-## What a build gets
-
-| | |
-| --- | --- |
-| **Its own app** | Own process, own port, own data. React shell driven entirely by the build manifest. |
-| **Its own database** | Generated schema, named for the business rather than the template. |
-| **Voice agents** | Draft agents cloned from the template's setup, renamed so no two builds collide. |
-| **Workflows** | n8n workflows, imported switched off, with credentials attached. |
-| **Memory** | Its own Cognee dataset, seeded and cognified. |
-| **An audit trail** | Every write carries a desk user and lands in an append-only ledger. |
-
-Isolation is enforced rather than assumed: everything is namespaced `[<build name>]`, and
-an update or delete requires both the id in that build's record *and* the namespaced name
-read back live.
+Lifecycle configs for a range of business shapes ship with it, so a request is matched to
+the closest and adapted rather than invented from nothing. When nothing matches well enough
+it returns **no match** rather than a default — a wrong starting shape hands every
+downstream decision a lifecycle from the wrong industry while looking perfectly confident.
 
 ---
 
 ## Safety properties
 
-These are deliberate and tested, not aspirations:
+Deliberate and tested, not aspirations:
 
-- **The policy gate and the state machine are separate questions.** `can()` asks whether an
-  action is legal in this state; `decide()` asks whether a human must approve it. Both must
-  pass. Conflating them is how systems end up with a legal action nobody sanctioned.
-- **Nothing happens without a ledger entry.** `record()` takes the action as a callback and
-  runs it, so there is no path that performs an action and forgets to log it. Reversal
-  appends; it never deletes.
+- **Legality and authority are separate questions.** One asks whether an action is possible
+  in this state; the other asks whether a human must approve it. Both must pass.
+- **Nothing happens without a ledger entry.** The action is passed *through* the ledger as a
+  callback, so there is no code path that performs something and forgets to record it.
 - **Approval is not self-service.** The requester cannot approve their own held action, and
   approval re-checks legality rather than trusting the earlier verdict.
-- **Memory degrades, the record does not.** The memory client returns empty and never
-  throws — an outage must not block a booking. The CRM adapter does the opposite and throws
-  loudly, because silently dropping a commitment is worse than an error.
-- **Auth fails closed.** The service refuses to start without its secret. There is no
-  `if (secret && ...)` pattern anywhere, because that shape passes when the secret is unset.
-- **No CORS.** Nothing in a browser reaches the core API.
+- **Auth fails closed.** The service refuses to start without its secret. No
+  `if (secret && ...)` anywhere — that shape passes when the secret is unset.
+- **Builds are isolated.** Everything a build creates is namespaced to it, and touching it
+  again requires both the recorded id *and* the namespaced name read back live.
 
 ---
 
@@ -167,60 +174,43 @@ These are deliberate and tested, not aspirations:
 
 ```bash
 npm install
-cp .env.example .env          # then generate a secret, see below
+cp .env.example .env
 npm start                     # core service on :8788
 npm run builder:web           # builder UI on 127.0.0.1:8790
+npm test                      # 522 checks, no network or keys required
 ```
 
-The service refuses to start without `SHIPMATE_API_SECRET`:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-The builder UI binds loopback only and rejects non-local Host headers — it holds
-privileged keys. `--lan` adds this machine's network with a required access key;
-`--public` is the hosted mode described in [docs/HOSTING.md](docs/HOSTING.md).
-
-### Tests
-
-```bash
-npm test
-```
-
-522 checks across the domain logic, every shipped vertical, the builder, the app runtime,
-the deploy isolation rules and the workflow structure. No network, no API keys, no
-database — they run anywhere.
+The builder UI binds loopback only and rejects non-local Host headers — it holds privileged
+keys. `--lan` adds this machine's network behind an access key; `--public` is the hosted
+mode in [docs/HOSTING.md](docs/HOSTING.md).
 
 ---
 
 ## Layout
 
 ```
-src/verticals/     the eleven templates + the config type and its validator
 src/domain/        the kernel: state machine, policy gate, commitments — pure, no I/O
-src/engines/       audit ledger, store, cut-off sentinel, intake, quoting pipeline
-src/builder/       fork, extend, routing, planning, deployment, the web UI server
+src/engines/       audit ledger, deadline sentinel, intake, procurement, margin, risk
+src/verticals/     lifecycle configs — pure data, validated, no code
+src/builder/       composition, routing, planning, provisioning, the builder UI
 src/app-runtime/   serves a build as its own standalone application
-apps/crm-shell/    the React shell every built app renders through
-n8n/               importable workflows
-docs/              hosting guide, screenshots, the orchestration plan
+src/memory/        the knowledge graph client
+apps/crm-shell/    the module library every built app renders through
+n8n/               the workflow graphs
 ```
 
 ---
 
 ## Status
 
-Built as a working system rather than a demo, and honest about the line between them:
+**Proven** — the kernel, the module library, the policy gate, the audit ledger, the build
+path, the app runtime and the provisioning isolation rules. Covered by the suite and
+exercised by real builds.
 
-**Proven** — the kernel, all eleven templates, the policy gate, the audit ledger, the
-builder's fork path, the app runtime, and the deploy isolation rules. These are covered by
-the test suite and exercised by real builds.
-
-**Wired, not proven in production** — the call-extraction path is built and typechecked but
-has not run against live transcripts at volume. The payment leg has its shape and its
-policy gate, but its callback does not yet verify the provider's checksum, so it must not
-release anything until that lands.
+**Wired, not proven at volume** — call extraction runs and typechecks but has not been
+exercised against live transcripts at scale. The money rail has its shape and its gate, but
+its callback does not yet verify the provider's checksum, so it must not release anything
+until that lands.
 
 **Not built** — outbound calling, and the pricing and compliance sub-agents.
 
